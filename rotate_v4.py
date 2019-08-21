@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import random
+import test_location
 
 
 def rotate(img_name, txt_name, r=np.random.randint(-10, 10),
@@ -21,7 +22,7 @@ def rotate(img_name, txt_name, r=np.random.randint(-10, 10),
     def Srotate(angle, valuex, valuey, pointx=0, pointy=0, resize=resize, ):
         sRotatex = (valuex - pointx) * np.cos(angle) + (valuey - pointy) * np.sin(angle) + pointx
         sRotatey = (valuey - pointy) * np.cos(angle) - (valuex - pointx) * np.sin(angle) + pointy
-        return sRotatex * resize + dw, sRotatey * resize + dh
+        return int(sRotatex * resize + dw), int(sRotatey * resize + dh)
 
     img = cv2.imread(img_name, )
     copy = img.copy()
@@ -77,7 +78,7 @@ if __name__ == '__main__':
         if '.jpg' in name or '.png' in name:
             if os.path.exists(os.path.join(path, name[:-4] + '.txt')):
                 for _ in range(20):
-                    r = np.random.randint(-3, 3)
+                    r = np.random.randint(-2, 2)
                     resize = random.uniform(0.9, 1)
                     dw = np.random.randint(-50, 50)
                     dh = np.random.randint(-50, 50)
@@ -86,17 +87,28 @@ if __name__ == '__main__':
                                        resize=resize, show=False,
                                        dw=dw, dh=dh)
                     if random.random() > 0.8:
-                        img = gasuss_noise(img, random.uniform(0, 0.1), random.uniform(0, 0.1))
+                        img = gasuss_noise(img, random.uniform(0, 0.05), random.uniform(0, 0.05))
                     if random.random() > 0.8:
-                        img = sp_noise(img, random.uniform(0, 0.1), )
-                    if random.random() > 0.8:
-                        num = np.random.randint(3, 5)
-                        img = cv2.blur(img, (num, num))
+                        img = sp_noise(img, random.uniform(0, 0.05), )
+                    # if random.random() > 0.8:
+                    #     num = np.random.randint(3, 5)
+                    #     img = cv2.blur(img, (num, num))
                     # if random.random() > 0.8:
                     #     contrast = random.randint(50, 100)  # 对比度
                     #     brightness = random.randint(50, 100)  # 亮度
                     #     out = cv2.addWeighted(img, contrast, img, 0, brightness)
                     cv2.imwrite(os.path.join(output, name[:-4] + '_noise_blur_' + str(_).zfill(5) + '.jpg'), img)
+                    # 判断异常的bbox
+                    boxs = np.array(boxs).reshape(-1, 2)
+                    shape = [img.shape[1], img.shape[0]]
+                    boxs[:, 0][boxs[:, 0] > shape[0]] = shape[0]
+                    boxs[:, 1][boxs[:, 1] > shape[1]] = shape[1]
+                    boxs[:, 0][boxs[:, 0] < 0] = 0
+                    boxs[:, 1][boxs[:, 1] < 0] = 0
+                    for corr in boxs:
+                        if corr[0] > shape[0] or corr[1] > shape[1] or corr[0] < 0 or corr[1] < 0:
+                            print(corr, shape)
+                    # 保存bbox
                     boxs = np.array(boxs, dtype=str).reshape(-1, 8)
                     with open(os.path.join(output, name[:-4] + '_noise_blur_' + str(_).zfill(5) + '.txt'), 'w') as f:
                         for box in boxs:
